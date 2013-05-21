@@ -3,6 +3,7 @@ MANIFEST
 META.yml
 Makefile.PL
 README
+README.md
 bin/highroller
 dist.ini
 lib/Rmg/OddsConverter.pm
