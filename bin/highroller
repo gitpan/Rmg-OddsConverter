@@ -8,17 +8,21 @@
 
   push @ARGV,"AAPL" unless($ARGV[0]);
 
-  my $cmd = 'yahooquote --verbose '.$ARGV[0].' | egrep -i "(^LAST:|^52)" | '.
-            'tr -d " " | sed "s/52-WeekRange://" | sed "s/Last://"| tr "-" " "';
-  my @highroller = split("\n| ",`$cmd`);
 
   my $p = rand(1);
-  my $oc = Rmg::OddsConverter->new( probability => $p );
   my $m = 0;
+  my $oc = undef;
   say "@"x30;
 
 foreach(@ARGV){
 
+  my $cmd = 'yahooquote --verbose '.$_.' | egrep -i "(^LAST:|^52)" | '.
+            'tr -d " " | sed "s/52-WeekRange://" | sed "s/Last://"| tr "-" " "';
+  my @highroller = split("\n| ",`$cmd`);
+
+  $oc = Rmg::OddsConverter->new( probability => $p );
+
+  say sprintf("%s %s %s","@"x10,"rand prop 0..1","@"x10);
   say "Contract:".$_;
   say "Last:$highroller[0]";
   say "rand(1) = $p";
@@ -27,8 +31,9 @@ foreach(@ARGV){
   say "probability=" . $oc->probability;
   say "roi=" . $oc->roi;
   say "monte=".$oc->monte($p,$_);
-  say "+"x30;
+  say "\n"x3;
 
+  say sprintf("%s %s %s","@"x10,"LAST - 52WeekLow","@"x10);
   $m = $highroller[0]-$highroller[1];
   say "new from (LAST - 52WeekLow) ($m)\$";
   say "decimal=" . $oc->decimal;
@@ -36,7 +41,7 @@ foreach(@ARGV){
   say "probability=" . $oc->probability;
   say "roi=" . $oc->roi;
   say  "monte=".$oc->monte($m,$_);
-  say "@"x30;
+
 }
 
 

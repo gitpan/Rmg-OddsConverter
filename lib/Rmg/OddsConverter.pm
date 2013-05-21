@@ -11,6 +11,15 @@ Rmg::OddsConverter
     print $oc->decimal;    # '2.00' (always to 2 decimal places)
     print $oc->roi;             # '100%' (always whole numbers or 'Inf.')
 
+
+    Or use the bash
+
+Example:
+
+    highroller AAPL GOOG
+
+
+
 =cut
 
 use strict;
@@ -37,6 +46,8 @@ a parameter is needed to start the conversion.
 
 =over
 
+=item I<monte>
+
 =item I<decimal>
 
 =item I<roi>
@@ -47,7 +58,6 @@ a parameter is needed to start the conversion.
 
 =item I<win_break>
 
-=item I<moneyline>
 
 =back
 
@@ -61,47 +71,48 @@ Example:
 
 =cut
 
-has 'probability' => (
-    isa      => 'Num',
-    is       => 'rw',
-    required => 0,
-    trigger  => \&_from_probability
-);
 has 'monte' => (
     isa      => 'Any',
     is       => 'rw',
     required => 0,
     trigger  => \&_monte
 );
+
+has 'probability' => (
+    isa      => 'Num',
+    is       => 'rw',
+    required => 0,
+    trigger  => \&_probability
+);
 has 'fractional' => (
     isa      => 'Num',
     is       => 'rw',
     required => 0,
-    trigger  => \&_from_fractional
+    trigger  => \&_fractional
 );
 has 'decimal' => (
     isa      => 'Num',
     is       => 'rw',
     required => 0,
-    trigger  => \&_from_decimal
+    trigger  => \&_decimal
 );
 has 'win_break' => (
     isa      => 'Num',
     is       => 'rw',
     required => 0,
-    trigger  => \&_from_win_break
+    trigger  => \&_win_break
 );
 has 'roi' => (
     isa      => 'Num',
     is       => 'rw',
     required => 0,
-    trigger  => \&_from_roi
+    trigger  => \&_roi
 );
 has 'moneyline' => (
     isa      => 'Str',
     is       => 'rw',
     required => 0,
-    trigger  => \&_from_moneyline
+    trigger  => \&_moneyline
 );
 has 'probability_not_rounded' => (
     isa      => 'Num',
@@ -135,6 +146,26 @@ has 'moneyline_not_rounded' => (
 );
 
 =over
+
+=item B<monte>
+
+Without parameter, return the monte ( return on investment ) for the object instantiate with the parameter from the method B<new()>
+
+Example:
+
+  print $oc->monte . "\n";
+
+With a parameter, re-initialise the object instance with that monte value
+and return the new monte value.
+
+Example:
+
+  print $oc->monte( 50 ) . "\n";
+
+=back
+
+=over
+
 
 =item B<decimal>
 
@@ -281,7 +312,7 @@ Example:
 
 
 
-sub _from_probability
+sub _probability
 {
     my ( $self ) = @_;
 
@@ -330,7 +361,7 @@ sub _from_probability
     return $self;
 }
 
-sub _from_roi
+sub _roi
 {
     my ( $self ) = @_;
     $self->{ roi_not_rounded }         = $self->{ roi };
@@ -349,7 +380,7 @@ sub _from_roi
     return $self;
 }
 
-sub _from_win_break
+sub _win_break
 {
     my ( $self ) = @_;
 
@@ -361,12 +392,12 @@ sub _from_win_break
     $self->{ win_break_not_rounded } = $self->{ win_break };
     $self->{ win_break }             = sprintf( "%.2f", $self->{ win_break_not_rounded } );
     $self->{ probability }           = $self->{ win_break_not_rounded } / 100;
-    _from_probability( $self );
+    _probability( $self );
 
     return $self;
 }
 
-sub _from_fractional
+sub _fractional
 {
     my ( $self ) = @_;
 
@@ -378,12 +409,12 @@ sub _from_fractional
     $self->{ fractional_not_rounded } = $self->{ fractional };
     $self->{ fractional }             = sprintf( "%.2f", $self->{ fractional_not_rounded } );
     $self->{ roi }                    = 100 * $self->{ fractional_not_rounded };
-    _from_roi( $self );
+    _roi( $self );
 
     return $self;
 }
 
-sub _from_decimal
+sub _decimal
 {
     my ( $self ) = @_;
 
@@ -395,12 +426,12 @@ sub _from_decimal
     $self->{ decimal_not_rounded } = $self->{ decimal };
     $self->{ decimal }             = sprintf( "%.2f", $self->{ decimal_not_rounded } );
     $self->{ fractional }          = $self->{ decimal_not_rounded } - 1;
-    _from_fractional( $self );
+    _fractional( $self );
 
     return $self;
 }
 
-sub _from_moneyline
+sub _moneyline
 {
     my ( $self ) = @_;
 
@@ -419,7 +450,7 @@ sub _from_moneyline
     $self->{ moneyline_not_rounded } = $self->{ moneyline };
     $self->{ moneyline }             = sprintf( "%.2f", $self->{ moneyline_not_rounded } );
     $self->{ fractional }            = $self->{ moneyline_not_rounded } < 0 ? -( 100 / $self->{ moneyline_not_rounded } ) : $self->{ moneyline_not_rounded } / 100;
-    _from_fractional( $self );
+    _fractional( $self );
 
     return $self;
 }
@@ -427,35 +458,61 @@ sub _from_moneyline
 =head1 EXAMPLE
 
 
+
   #!/usr/bin/perl
 
   use strict;
   use feature qw( say );
   use Data::Dumper;
-
+  use Finance::YahooQuote;
   use Rmg::OddsConverter;
 
-  my $p = 0.5;
-  my $oc = Rmg::OddsConverter->new( probability => $p );
-  say "Test probability ($p)";
-  say "decimal=" . $oc->decimal;
-  say "fractional=" . $oc->fractional;
-  say "probability=" . $oc->probability;
-  say "win_break=" . $oc->win_break;
-  say "roi=" . $oc->roi;
-  say "money line=" . $oc->money_line;
-  say "";
+  push @ARGV,"AAPL" unless($ARGV[0]);
 
-  my $m = '-300';
-  say "new from moneyline ($m)";
-  say "new money line=" . $oc->money_line($m);
-  say "decimal=" . $oc->decimal;
-  say "fractional=" . $oc->fractional;
-  say "probability=" . $oc->probability;
-  say "win_break=" . $oc->win_break;
-  say "roi=" . $oc->roi;
-  say "money line=" . $oc->money_line;
-  say "";
+
+  my $p = rand(1);
+  my $m = 0;
+  my $oc = undef;
+  say "@"x30;
+
+  foreach(@ARGV){
+
+    my $cmd = 'yahooquote --verbose '.$_.' | egrep -i "(^LAST:|^52)" | '.
+              'tr -d " " | sed "s/52-WeekRange://" | sed "s/Last://"| tr "-" " "';
+    my @highroller = split("\n| ",`$cmd`);
+
+    $oc = Rmg::OddsConverter->new( probability => $p );
+
+    say sprintf("%s %s %s","@"x10,"rand prop 0..1","@"x10);
+    say "Contract:".$_;
+    say "Last:$highroller[0]";
+    say "rand(1) = $p";
+    say "decimal=" . $oc->decimal;
+    say "fractional=" . $oc->fractional;
+    say "probability=" . $oc->probability;
+    say "roi=" . $oc->roi;
+    say "monte=".$oc->monte($p,$_);
+    say "\n"x3;
+
+    say sprintf("%s %s %s","@"x10,"LAST - 52WeekLow","@"x10);
+    $m = $highroller[0]-$highroller[1];
+    say "new from (LAST - 52WeekLow) ($m)\$";
+    say "decimal=" . $oc->decimal;
+    say "fractional=" . $oc->fractional;
+    say "probability=" . $oc->probability;
+    say "roi=" . $oc->roi;
+    say  "monte=".$oc->monte($m,$_);
+
+  }
+
+
+
+  BEGIN{
+      printf "%s", "\n"x3;
+
+
+  }
+1;
 
 
 =head1 AUTHOR
